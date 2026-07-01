@@ -21,7 +21,13 @@ cd techchallenge
 
 ### 2. Configurar variáveis de ambiente
 
-Crie um arquivo `.env` na raiz do projeto com o conteúdo abaixo. Os valores devem corresponder às credenciais definidas no `docker-compose.yml`:
+Copie o arquivo de exemplo e ajuste se necessário:
+
+```bash
+cp .env.example .env
+```
+
+Os valores devem corresponder às credenciais definidas no `docker-compose.yml`:
 
 ```env
 PORT=3000
@@ -32,8 +38,6 @@ POSTGRES_DB=techchallenge
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 ```
-
-> O arquivo `.env` não é versionado. Nunca commite credenciais reais no repositório.
 
 ### 3. Subir o banco de dados
 
@@ -54,8 +58,6 @@ Para parar o banco:
 ```bash
 docker compose down
 ```
-
-> **Atenção:** `docker compose down -v` remove também o volume de dados do PostgreSQL.
 
 ### 4. Instalar dependências
 
@@ -80,6 +82,51 @@ npm run start
 
 A API ficará disponível em `http://localhost:3000` (ou na porta definida em `PORT`).
 
+## Arquitetura
+
+A aplicação segue uma arquitetura em camadas: controllers HTTP delegam para use cases, que dependem de interfaces de repositório implementadas com o driver `pg`.
+
+| Camada | Responsabilidade |
+|--------|------------------|
+| `http/controllers/` | Rotas e handlers HTTP |
+| `use-cases/` | Regras de aplicação e orquestração |
+| `repositories/` | Contratos e implementações de acesso a dados |
+| `entities/` | Modelos de domínio (`Post`) |
+| `lib/pg/` | Pool de conexão PostgreSQL |
+| `env/` | Validação de variáveis de ambiente com Zod |
+| `utils/` | Tratamento global de erros |
+
+## Endpoints da API
+
+| Método | Rota | Descrição | Query params |
+|--------|------|-----------|--------------|
+| `GET` | `/posts` | Lista posts com paginação | `page` (padrão: 1), `limit` (padrão: 10, máx: 100) |
+
+### Exemplo — listar posts
+
+```bash
+curl "http://localhost:3000/posts?page=1&limit=10"
+```
+
+Resposta (`200`):
+
+```json
+{
+  "posts": [
+    {
+      "id": 1,
+      "titulo": "Primeiro post",
+      "conteudo": "Conteúdo do primeiro post",
+      "data_publicacao": "2026-06-30T01:15:20.103Z",
+      "data_atualizacao": "2026-06-30T01:15:20.103Z"
+    }
+  ],
+  "page": 1,
+  "limit": 10,
+  "total": 1
+}
+```
+
 ## Scripts disponíveis
 
 | Script        | Comando                        | Descrição                              |
@@ -95,18 +142,30 @@ A API ficará disponível em `http://localhost:3000` (ou na porta definida em `P
 ```
 techchallenge/
 ├── bd/
-│   └── schema_bd.sql       # Script de inicialização do banco
-├── docs/
-│   └── README.md           # Documentação detalhada da API e arquitetura
-├── src/                    # Código-fonte da aplicação
-├── docker-compose.yml      # Configuração do PostgreSQL
+│   └── schema_bd.sql           # Script de inicialização do banco
+├── src/
+│   ├── app.ts                  # Bootstrap Fastify e registro de rotas
+│   ├── server.ts               # Entrada do servidor HTTP
+│   ├── entities/
+│   │   ├── models/             # Contratos TypeScript (IPost)
+│   │   └── post.ts             # Classe de domínio Post
+│   ├── env/                    # Validação de variáveis de ambiente
+│   ├── http/controllers/
+│   │   └── post/               # Rotas de posts (GET /posts)
+│   ├── lib/pg/                 # Pool PostgreSQL
+│   ├── repositories/
+│   │   ├── post.repository.interface.ts
+│   │   └── pg/                 # Implementação com driver pg
+│   ├── use-cases/
+│   │   ├── find-posts.use-case.ts
+│   │   ├── errors/
+│   │   └── factory/
+│   └── utils/                  # Tratamento global de erros
+├── docker-compose.yml          # Configuração do PostgreSQL
+├── .env.example                # Modelo de variáveis de ambiente
 ├── package.json
-└── .env                    # Variáveis de ambiente (criar localmente)
+└── .env                        # Variáveis de ambiente (criar localmente)
 ```
-
-## Documentação adicional
-
-Para detalhes sobre arquitetura, endpoints e exemplos de requisições, consulte [docs/README.md](docs/README.md).
 
 ## Solução de problemas
 
