@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:14.23-trixie
+    container_name: techchallenge-postgres
+    environment:
+      POSTGRES_PASSWORD: "techchallenge"
+      POSTGRES_USER: "root"
+      POSTGRES_DB: "techchallenge"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./bd/schema_bd.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d techchallenge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
