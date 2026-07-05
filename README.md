@@ -190,13 +190,11 @@ Resposta (`200`):
 
 ## Validação de código
 
-Antes de commitar ou abrir um pull request, execute a verificação de lint:
-
 ```bash
 npm run lint
 ```
 
-O comando analisa os arquivos em `src/` usando ESLint com as regras recomendadas para JavaScript/TypeScript. Se houver problemas, o ESLint lista o arquivo, a linha e a regra violada — corrija os apontamentos e rode novamente até o comando terminar sem erros.
+O comando analisa os arquivos em `src/` usando ESLint com as regras recomendadas para JavaScript/TypeScript. Se houver problemas, o ESLint lista o arquivo, a linha e a regra violada para que possam ser corrigidos os apontamentos. Executar novamente até o comando terminar sem erros.
 
 Para formatar o código automaticamente com Prettier:
 
