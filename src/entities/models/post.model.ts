@@ -1,3 +1,8 @@
+export interface ICreatePost {
+  titulo: string;
+  conteudo: string;
+}
+
 export interface IPost {
   id: number;
   titulo: string;

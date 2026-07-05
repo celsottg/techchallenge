@@ -1,4 +1,4 @@
-import type { IPost } from "../entities/models/post.model.js";
+import type { ICreatePost, IPost } from "../entities/models/post.model.js";
 
 export interface FindAllPostsParams {
   page: number;
@@ -12,4 +12,5 @@ export interface FindAllPostsResult {
 
 export interface IPostRepository {
   findAll(params: FindAllPostsParams): Promise<FindAllPostsResult>;
+  create(data: ICreatePost): Promise<IPost>;
 }

@@ -1,4 +1,5 @@
 import { Post } from "../../entities/post.js";
+import type { ICreatePost } from "../../entities/models/post.model.js";
 import type {
   FindAllPostsParams,
   FindAllPostsResult,
@@ -46,5 +47,24 @@ export class PostRepository implements IPostRepository {
       posts,
       total: Number(countResult.rows[0]?.count ?? 0),
     };
+  }
+
+  async create({ titulo, conteudo }: ICreatePost) {
+    const result = await pool.query<PostRow>(
+      `INSERT INTO techchallenge_posts (titulo, conteudo)
+       VALUES ($1, $2)
+       RETURNING id, titulo, conteudo, data_publicacao, data_atualizacao`,
+      [titulo, conteudo],
+    );
+
+    const row = result.rows[0];
+
+    return new Post({
+      id: Number(row.id),
+      titulo: row.titulo,
+      conteudo: row.conteudo,
+      data_publicacao: row.data_publicacao,
+      data_atualizacao: row.data_atualizacao,
+    });
   }
 }
