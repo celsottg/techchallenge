@@ -102,6 +102,7 @@ A aplicação segue uma arquitetura em camadas: controllers HTTP delegam para us
 |--------|------|-----------|---------------------|
 | `GET` | `/posts` | Lista posts com paginação | `page` (padrão: 1), `limit` (padrão: 10, máx: 100) |
 | `POST` | `/posts` | Cria um novo post | `{ "titulo": "string", "conteudo": "string" }` |
+| `DELETE` | `/posts/:id` | Remove um post pelo id | `id` na URL — retorna `404` se não encontrado |
 
 ### Exemplo — criar post
 
@@ -122,6 +123,14 @@ Resposta (`201`):
   "data_atualizacao": "2026-06-30T01:15:20.103Z"
 }
 ```
+
+### Exemplo — remover post 
+
+```bash
+curl -X DELETE http://localhost:3000/posts/1
+```
+
+Resposta (`204`): sem corpo.
 
 ### Exemplo — listar posts
 
@@ -172,7 +181,7 @@ techchallenge/
 │   │   └── post.ts             # Classe de domínio Post
 │   ├── env/                    # Validação de variáveis de ambiente
 │   ├── http/controllers/
-│   │   └── post/               # Rotas de posts (GET e POST /posts)
+│   │   └── post/               # Rotas de posts (GET, POST e DELETE /posts)
 │   ├── lib/pg/                 # Pool PostgreSQL
 │   ├── repositories/
 │   │   ├── post.repository.interface.ts
@@ -180,6 +189,7 @@ techchallenge/
 │   ├── use-cases/
 │   │   ├── find-posts.use-case.ts
 │   │   ├── create-post.use-case.ts
+│   │   ├── delete-post.use-case.ts
 │   │   ├── errors/
 │   │   └── factory/
 │   └── utils/                  # Tratamento global de erros
