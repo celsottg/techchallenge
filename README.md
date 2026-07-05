@@ -98,12 +98,14 @@ A aplicação segue uma arquitetura em camadas: controllers HTTP delegam para us
 
 ## Endpoints da API
 
-| Método   | Rota         | Descrição                 | Body / Query params                                                                                |
-| -------- | ------------ | ------------------------- | -------------------------------------------------------------------------------------------------- |
-| `GET`    | `/posts`     | Lista posts com paginação | `page` (padrão: 1), `limit` (padrão: 10, máx: 100)                                                 |
-| `POST`   | `/posts`     | Cria um novo post         | `{ "titulo": "string", "conteudo": "string" }`                                                     |
-| `PUT`    | `/posts/:id` | Atualiza um post pelo id  | `id` na URL; body `{ "titulo": "string", "conteudo": "string" }` — retorna `404` se não encontrado |
-| `DELETE` | `/posts/:id` | Remove um post pelo id    | `id` na URL — retorna `404` se não encontrado                                                      |
+| Método   | Rota              | Descrição                                      | Body / Query params                                                                                |
+| -------- | ----------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `GET`    | `/posts`          | Lista posts com paginação                      | `page` (padrão: 1), `limit` (padrão: 10, máx: 100)                                                 |
+| `GET`    | `/posts/search`   | Busca posts por palavra-chave no título/conteúdo | `search` (obrigatório) — retorna `200` com lista de posts                                          |
+| `GET`    | `/posts/:id`      | Busca um post pelo id                          | `id` na URL — retorna `404` se não encontrado                                                      |
+| `POST`   | `/posts`          | Cria um novo post                              | `{ "titulo": "string", "conteudo": "string" }`                                                     |
+| `PUT`    | `/posts/:id`      | Atualiza um post pelo id                       | `id` na URL; body `{ "titulo": "string", "conteudo": "string" }` — retorna `404` se não encontrado |
+| `DELETE` | `/posts/:id`      | Remove um post pelo id                         | `id` na URL — retorna `404` se não encontrado                                                      |
 
 ### Exemplo — criar post
 
@@ -178,6 +180,46 @@ Resposta (`200`):
 }
 ```
 
+### Exemplo — buscar post por id
+
+```bash
+curl http://localhost:3000/posts/1
+```
+
+Resposta (`200`):
+
+```json
+{
+  "id": 1,
+  "titulo": "Primeiro post",
+  "conteudo": "Conteúdo do primeiro post",
+  "data_publicacao": "2026-06-30T01:15:20.103Z",
+  "data_atualizacao": "2026-06-30T01:15:20.103Z"
+}
+```
+
+### Exemplo — buscar posts por palavra-chave
+
+```bash
+curl "http://localhost:3000/posts/search?search=primeiro"
+```
+
+Resposta (`200`):
+
+```json
+{
+  "posts": [
+    {
+      "id": 1,
+      "titulo": "Primeiro post",
+      "conteudo": "Conteúdo do primeiro post",
+      "data_publicacao": "2026-06-30T01:15:20.103Z",
+      "data_atualizacao": "2026-06-30T01:15:20.103Z"
+    }
+  ]
+}
+```
+
 ## Scripts disponíveis
 
 | Script      | Comando                    | Descrição                              |
@@ -225,6 +267,8 @@ techchallenge/
 │   │   └── pg/                 # Implementação com driver pg
 │   ├── use-cases/
 │   │   ├── find-posts.use-case.ts
+│   │   ├── find-post-by-id.use-case.ts
+│   │   ├── search-posts.use-case.ts
 │   │   ├── create-post.use-case.ts
 │   │   ├── update-post.use-case.ts
 │   │   ├── delete-post.use-case.ts

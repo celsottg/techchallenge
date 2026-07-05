@@ -3,12 +3,18 @@ import { z } from "zod";
 
 import { makeCreatePostUseCase } from "../../../use-cases/factory/make-create-post-use-case.js";
 import { makeDeletePostUseCase } from "../../../use-cases/factory/make-delete-post-use-case.js";
+import { makeFindPostByIdUseCase } from "../../../use-cases/factory/make-find-post-by-id-use-case.js";
 import { makeFindPostsUseCase } from "../../../use-cases/factory/make-find-posts-use-case.js";
+import { makeSearchPostsUseCase } from "../../../use-cases/factory/make-search-posts-use-case.js";
 import { makeUpdatePostUseCase } from "../../../use-cases/factory/make-update-post-use-case.js";
 
 const listPostsQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(10),
+});
+
+const searchPostsQuerySchema = z.object({
+  search: z.string().min(1),
 });
 
 const createPostBodySchema = z.object({
@@ -33,6 +39,24 @@ export async function postRoutes(app: FastifyInstance) {
       limit,
       total,
     });
+  });
+
+  app.get("/posts/search", async (request, reply) => {
+    const { search } = searchPostsQuerySchema.parse(request.query);
+
+    const searchPostsUseCase = makeSearchPostsUseCase();
+    const { posts } = await searchPostsUseCase.execute({ search });
+
+    return reply.status(200).send({ posts });
+  });
+
+  app.get("/posts/:id", async (request, reply) => {
+    const { id } = postParamsSchema.parse(request.params);
+
+    const findPostByIdUseCase = makeFindPostByIdUseCase();
+    const post = await findPostByIdUseCase.execute(id);
+
+    return reply.status(200).send(post);
   });
 
   app.post("/posts", async (request, reply) => {

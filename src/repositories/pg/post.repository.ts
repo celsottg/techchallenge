@@ -55,6 +55,50 @@ export class PostRepository implements IPostRepository {
     };
   }
 
+  async findById(id: number) {
+    const result = await pool.query<PostRow>(
+      `SELECT id, titulo, conteudo, data_publicacao, data_atualizacao
+       FROM techchallenge_posts
+       WHERE id = $1`,
+      [id],
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      return null;
+    }
+
+    return new Post({
+      id: Number(row.id),
+      titulo: row.titulo,
+      conteudo: row.conteudo,
+      data_publicacao: row.data_publicacao,
+      data_atualizacao: row.data_atualizacao,
+    });
+  }
+
+  async searchPosts(term: string) {
+    const result = await pool.query<PostRow>(
+      `SELECT id, titulo, conteudo, data_publicacao, data_atualizacao
+       FROM techchallenge_posts
+       WHERE titulo ILIKE $1 OR conteudo ILIKE $1
+       ORDER BY data_publicacao DESC`,
+      [`%${term}%`],
+    );
+
+    return result.rows.map(
+      (row) =>
+        new Post({
+          id: Number(row.id),
+          titulo: row.titulo,
+          conteudo: row.conteudo,
+          data_publicacao: row.data_publicacao,
+          data_atualizacao: row.data_atualizacao,
+        }),
+    );
+  }
+
   async create({ titulo, conteudo }: ICreatePost) {
     const result = await pool.query<PostRow>(
       `INSERT INTO techchallenge_posts (titulo, conteudo)
