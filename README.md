@@ -98,9 +98,30 @@ A aplicação segue uma arquitetura em camadas: controllers HTTP delegam para us
 
 ## Endpoints da API
 
-| Método | Rota | Descrição | Query params |
-|--------|------|-----------|--------------|
+| Método | Rota | Descrição | Body / Query params |
+|--------|------|-----------|---------------------|
 | `GET` | `/posts` | Lista posts com paginação | `page` (padrão: 1), `limit` (padrão: 10, máx: 100) |
+| `POST` | `/posts` | Cria um novo post | `{ "titulo": "string", "conteudo": "string" }` |
+
+### Exemplo — criar post
+
+```bash
+curl -X POST http://localhost:3000/posts \
+  -H "Content-Type: application/json" \
+  -d '{"titulo": "Novo post", "conteudo": "Texto do post"}'
+```
+
+Resposta (`201`):
+
+```json
+{
+  "id": 3,
+  "titulo": "Novo post",
+  "conteudo": "Texto do post",
+  "data_publicacao": "2026-06-30T01:15:20.103Z",
+  "data_atualizacao": "2026-06-30T01:15:20.103Z"
+}
+```
 
 ### Exemplo — listar posts
 
@@ -151,13 +172,14 @@ techchallenge/
 │   │   └── post.ts             # Classe de domínio Post
 │   ├── env/                    # Validação de variáveis de ambiente
 │   ├── http/controllers/
-│   │   └── post/               # Rotas de posts (GET /posts)
+│   │   └── post/               # Rotas de posts (GET e POST /posts)
 │   ├── lib/pg/                 # Pool PostgreSQL
 │   ├── repositories/
 │   │   ├── post.repository.interface.ts
 │   │   └── pg/                 # Implementação com driver pg
 │   ├── use-cases/
 │   │   ├── find-posts.use-case.ts
+│   │   ├── create-post.use-case.ts
 │   │   ├── errors/
 │   │   └── factory/
 │   └── utils/                  # Tratamento global de erros
