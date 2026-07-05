@@ -1,4 +1,8 @@
-import type { ICreatePost, IPost } from "../entities/models/post.model.js";
+import type {
+  ICreatePost,
+  IPost,
+  IUpdatePost,
+} from "../entities/models/post.model.js";
 
 export interface FindAllPostsParams {
   page: number;
@@ -13,5 +17,6 @@ export interface FindAllPostsResult {
 export interface IPostRepository {
   findAll(params: FindAllPostsParams): Promise<FindAllPostsResult>;
   create(data: ICreatePost): Promise<IPost>;
+  update(id: number, data: IUpdatePost): Promise<IPost | null>;
   delete(id: number): Promise<boolean>;
 }

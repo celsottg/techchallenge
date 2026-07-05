@@ -86,23 +86,24 @@ A API ficará disponível em `http://localhost:3000` (ou na porta definida em `P
 
 A aplicação segue uma arquitetura em camadas: controllers HTTP delegam para use cases, que dependem de interfaces de repositório implementadas com o driver `pg`.
 
-| Camada | Responsabilidade |
-|--------|------------------|
-| `http/controllers/` | Rotas e handlers HTTP |
-| `use-cases/` | Regras de aplicação e orquestração |
-| `repositories/` | Contratos e implementações de acesso a dados |
-| `entities/` | Modelos de domínio (`Post`) |
-| `lib/pg/` | Pool de conexão PostgreSQL |
-| `env/` | Validação de variáveis de ambiente com Zod |
-| `utils/` | Tratamento global de erros |
+| Camada              | Responsabilidade                             |
+| ------------------- | -------------------------------------------- |
+| `http/controllers/` | Rotas e handlers HTTP                        |
+| `use-cases/`        | Regras de aplicação e orquestração           |
+| `repositories/`     | Contratos e implementações de acesso a dados |
+| `entities/`         | Modelos de domínio (`Post`)                  |
+| `lib/pg/`           | Pool de conexão PostgreSQL                   |
+| `env/`              | Validação de variáveis de ambiente com Zod   |
+| `utils/`            | Tratamento global de erros                   |
 
 ## Endpoints da API
 
-| Método | Rota | Descrição | Body / Query params |
-|--------|------|-----------|---------------------|
-| `GET` | `/posts` | Lista posts com paginação | `page` (padrão: 1), `limit` (padrão: 10, máx: 100) |
-| `POST` | `/posts` | Cria um novo post | `{ "titulo": "string", "conteudo": "string" }` |
-| `DELETE` | `/posts/:id` | Remove um post pelo id | `id` na URL — retorna `404` se não encontrado |
+| Método   | Rota         | Descrição                 | Body / Query params                                                                                |
+| -------- | ------------ | ------------------------- | -------------------------------------------------------------------------------------------------- |
+| `GET`    | `/posts`     | Lista posts com paginação | `page` (padrão: 1), `limit` (padrão: 10, máx: 100)                                                 |
+| `POST`   | `/posts`     | Cria um novo post         | `{ "titulo": "string", "conteudo": "string" }`                                                     |
+| `PUT`    | `/posts/:id` | Atualiza um post pelo id  | `id` na URL; body `{ "titulo": "string", "conteudo": "string" }` — retorna `404` se não encontrado |
+| `DELETE` | `/posts/:id` | Remove um post pelo id    | `id` na URL — retorna `404` se não encontrado                                                      |
 
 ### Exemplo — criar post
 
@@ -124,13 +125,33 @@ Resposta (`201`):
 }
 ```
 
-### Exemplo — remover post 
+### Exemplo — remover post
 
 ```bash
 curl -X DELETE http://localhost:3000/posts/1
 ```
 
 Resposta (`204`): sem corpo.
+
+### Exemplo — atualizar post
+
+```bash
+curl -X PUT http://localhost:3000/posts/1 \
+  -H "Content-Type: application/json" \
+  -d '{"titulo": "Post atualizado", "conteudo": "Novo conteúdo do post"}'
+```
+
+Resposta (`200`):
+
+```json
+{
+  "id": 1,
+  "titulo": "Post atualizado",
+  "conteudo": "Novo conteúdo do post",
+  "data_publicacao": "2026-06-30T01:15:20.103Z",
+  "data_atualizacao": "2026-07-05T17:30:00.000Z"
+}
+```
 
 ### Exemplo — listar posts
 
@@ -159,13 +180,31 @@ Resposta (`200`):
 
 ## Scripts disponíveis
 
-| Script        | Comando                        | Descrição                              |
-|---------------|--------------------------------|----------------------------------------|
-| `start:dev`   | `tsx watch src/server.ts`      | Desenvolvimento com recarga automática |
-| `start`       | `tsx src/server.js`            | Execução após build                    |
-| `build`       | `tsup src --out-dir build`     | Compila TypeScript para `build/`       |
-| `lint`        | `eslint src`                   | Verifica problemas de lint             |
-| `format`      | `prettier --write .`           | Formata os arquivos do projeto         |
+| Script      | Comando                    | Descrição                              |
+| ----------- | -------------------------- | -------------------------------------- |
+| `start:dev` | `tsx watch src/server.ts`  | Desenvolvimento com recarga automática |
+| `start`     | `tsx src/server.js`        | Execução após build                    |
+| `build`     | `tsup src --out-dir build` | Compila TypeScript para `build/`       |
+| `lint`      | `eslint src`               | Verifica problemas de lint             |
+| `format`    | `prettier --write .`       | Formata os arquivos do projeto         |
+
+## Validação de código
+
+Antes de commitar ou abrir um pull request, execute a verificação de lint:
+
+```bash
+npm run lint
+```
+
+O comando analisa os arquivos em `src/` usando ESLint com as regras recomendadas para JavaScript/TypeScript. Se houver problemas, o ESLint lista o arquivo, a linha e a regra violada — corrija os apontamentos e rode novamente até o comando terminar sem erros.
+
+Para formatar o código automaticamente com Prettier:
+
+```bash
+npm run format
+```
+
+A configuração do ESLint fica em `eslint.config.js` na raiz do projeto.
 
 ## Estrutura do repositório
 
@@ -181,7 +220,7 @@ techchallenge/
 │   │   └── post.ts             # Classe de domínio Post
 │   ├── env/                    # Validação de variáveis de ambiente
 │   ├── http/controllers/
-│   │   └── post/               # Rotas de posts (GET, POST e DELETE /posts)
+│   │   └── post/               # Rotas de posts (GET, POST, PUT e DELETE /posts)
 │   ├── lib/pg/                 # Pool PostgreSQL
 │   ├── repositories/
 │   │   ├── post.repository.interface.ts
@@ -189,6 +228,7 @@ techchallenge/
 │   ├── use-cases/
 │   │   ├── find-posts.use-case.ts
 │   │   ├── create-post.use-case.ts
+│   │   ├── update-post.use-case.ts
 │   │   ├── delete-post.use-case.ts
 │   │   ├── errors/
 │   │   └── factory/

@@ -1,5 +1,8 @@
 import { Post } from "../../entities/post.js";
-import type { ICreatePost } from "../../entities/models/post.model.js";
+import type {
+  ICreatePost,
+  IUpdatePost,
+} from "../../entities/models/post.model.js";
 import type {
   FindAllPostsParams,
   FindAllPostsResult,
@@ -16,7 +19,10 @@ interface PostRow {
 }
 
 export class PostRepository implements IPostRepository {
-  async findAll({ page, limit }: FindAllPostsParams): Promise<FindAllPostsResult> {
+  async findAll({
+    page,
+    limit,
+  }: FindAllPostsParams): Promise<FindAllPostsResult> {
     const offset = (page - 1) * limit;
 
     const [postsResult, countResult] = await Promise.all([
@@ -58,6 +64,30 @@ export class PostRepository implements IPostRepository {
     );
 
     const row = result.rows[0];
+
+    return new Post({
+      id: Number(row.id),
+      titulo: row.titulo,
+      conteudo: row.conteudo,
+      data_publicacao: row.data_publicacao,
+      data_atualizacao: row.data_atualizacao,
+    });
+  }
+
+  async update(id: number, { titulo, conteudo }: IUpdatePost) {
+    const result = await pool.query<PostRow>(
+      `UPDATE techchallenge_posts
+       SET titulo = $2, conteudo = $3, data_atualizacao = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING id, titulo, conteudo, data_publicacao, data_atualizacao`,
+      [id, titulo, conteudo],
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      return null;
+    }
 
     return new Post({
       id: Number(row.id),

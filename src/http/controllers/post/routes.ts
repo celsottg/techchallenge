@@ -4,6 +4,7 @@ import { z } from "zod";
 import { makeCreatePostUseCase } from "../../../use-cases/factory/make-create-post-use-case.js";
 import { makeDeletePostUseCase } from "../../../use-cases/factory/make-delete-post-use-case.js";
 import { makeFindPostsUseCase } from "../../../use-cases/factory/make-find-posts-use-case.js";
+import { makeUpdatePostUseCase } from "../../../use-cases/factory/make-update-post-use-case.js";
 
 const listPostsQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
@@ -15,7 +16,7 @@ const createPostBodySchema = z.object({
   conteudo: z.string().min(1),
 });
 
-const deletePostParamsSchema = z.object({
+const postParamsSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
@@ -43,8 +44,18 @@ export async function postRoutes(app: FastifyInstance) {
     return reply.status(201).send(post);
   });
 
+  app.put("/posts/:id", async (request, reply) => {
+    const { id } = postParamsSchema.parse(request.params);
+    const body = createPostBodySchema.parse(request.body);
+
+    const updatePostUseCase = makeUpdatePostUseCase();
+    const post = await updatePostUseCase.execute({ id, ...body });
+
+    return reply.status(200).send(post);
+  });
+
   app.delete("/posts/:id", async (request, reply) => {
-    const { id } = deletePostParamsSchema.parse(request.params);
+    const { id } = postParamsSchema.parse(request.params);
 
     const deletePostUseCase = makeDeletePostUseCase();
     await deletePostUseCase.execute(id);

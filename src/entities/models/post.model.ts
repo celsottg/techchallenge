@@ -3,6 +3,11 @@ export interface ICreatePost {
   conteudo: string;
 }
 
+export interface IUpdatePost {
+  titulo: string;
+  conteudo: string;
+}
+
 export interface IPost {
   id: number;
   titulo: string;
