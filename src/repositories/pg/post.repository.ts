@@ -67,4 +67,13 @@ export class PostRepository implements IPostRepository {
       data_atualizacao: row.data_atualizacao,
     });
   }
+
+  async delete(id: number): Promise<boolean> {
+    const result = await pool.query(
+      "DELETE FROM techchallenge_posts WHERE id = $1",
+      [id],
+    );
+
+    return (result.rowCount ?? 0) > 0;
+  }
 }

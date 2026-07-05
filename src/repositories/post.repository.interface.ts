@@ -13,4 +13,5 @@ export interface FindAllPostsResult {
 export interface IPostRepository {
   findAll(params: FindAllPostsParams): Promise<FindAllPostsResult>;
   create(data: ICreatePost): Promise<IPost>;
+  delete(id: number): Promise<boolean>;
 }
