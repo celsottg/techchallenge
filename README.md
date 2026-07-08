@@ -229,6 +229,19 @@ Resposta (`200`):
 | `build`     | `tsup src --out-dir build` | Compila TypeScript para `build/`       |
 | `lint`      | `eslint src`               | Verifica problemas de lint             |
 | `format`    | `prettier --write .`       | Formata os arquivos do projeto         |
+| `test`      | `jest`                     | Executa testes unitários               |
+| `test:coverage` | `jest --coverage`      | Executa testes e gera relatório de cobertura |
+
+## Testes unitários
+
+Os testes utilizam **Jest** com mocks de repositório e banco de dados, portanto **não dependem** do PostgreSQL estar em execução.
+
+```bash
+
+npm test
+
+npm run test:coverage
+```
 
 ## Validação de código
 
@@ -274,7 +287,10 @@ techchallenge/
 │   │   ├── delete-post.use-case.ts
 │   │   ├── errors/
 │   │   └── factory/
+│   ├── __tests__/              # Testes unitários (Jest + mocks)
 │   └── utils/                  # Tratamento global de erros
+├── jest.config.ts              # Configuração do Jest
+├── coverage/                   # Relatório de cobertura (gerado por npm run test:coverage)
 ├── docker-compose.yml          # Configuração do PostgreSQL
 ├── .env.example                # Modelo de variáveis de ambiente
 ├── package.json
