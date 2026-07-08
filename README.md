@@ -339,3 +339,11 @@ docker compose logs postgres
 **Erro de conexão com o banco**
 
 Confirme que o container está rodando (`docker compose ps`) e que as variáveis do `.env` coincidem com as do `docker-compose.yml`.
+
+
+## Dificuldades no projeto
+
+**Tempo para o volume de aulas**
+
+Encontrei dificuldade em conseguir acompanhar todas as aulas em vídeo, por conta de tempo disponível X volume de aulas.
+Com isso, tentei realizar a entrega mais próxima possível do que vi em aula, e utilizei-me do recurso de IA para principalmente apoiar na documentação do projeto.
