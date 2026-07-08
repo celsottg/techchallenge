@@ -259,10 +259,35 @@ npm run format
 
 A configuração do ESLint fica em `eslint.config.js` na raiz do projeto.
 
+## Integração contínua
+
+O projeto possui um workflow de CI no GitHub Actions em [`.github/workflows/main.yaml`](.github/workflows/main.yaml).
+
+O pipeline é executado automaticamente em **push** e **pull request** para a branch `master`, com as seguintes etapas:
+
+1. Instalação de dependências (`npm install`)
+2. Lint (`npm run lint`)
+3. Testes unitários (`npm test`)
+4. Build (`npm run build`)
+
+Os testes no CI utilizam mocks e **não exigem** PostgreSQL. Para validar localmente antes do push:
+
+```bash
+npm install
+npm run lint
+npm test
+npm run build
+```
+
+O status das execuções pode ser acompanhado na aba **Actions** do repositório no GitHub.
+
 ## Estrutura do repositório
 
 ```
 techchallenge/
+├── .github/
+│   └── workflows/
+│       └── main.yaml           # Pipeline de CI (lint, test, build)
 ├── bd/
 │   └── schema_bd.sql           # Script de inicialização do banco
 ├── src/
