@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { authenticate } from "../../middleware/authenticate.js";
+import { authorize } from "../../middleware/authorize.js";
 import { makeCreatePostUseCase } from "../../../use-cases/factory/make-create-post-use-case.js";
 import { makeDeletePostUseCase } from "../../../use-cases/factory/make-delete-post-use-case.js";
 import { makeFindPostByIdUseCase } from "../../../use-cases/factory/make-find-post-by-id-use-case.js";
@@ -26,8 +28,16 @@ const postParamsSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+const readAccess = {
+  preHandler: [authenticate, authorize("PROFESSOR", "ALUNO")],
+};
+
+const writeAccess = {
+  preHandler: [authenticate, authorize("PROFESSOR")],
+};
+
 export async function postRoutes(app: FastifyInstance) {
-  app.get("/posts", async (request, reply) => {
+  app.get("/posts", readAccess, async (request, reply) => {
     const { page, limit } = listPostsQuerySchema.parse(request.query);
 
     const findPostsUseCase = makeFindPostsUseCase();
@@ -41,7 +51,7 @@ export async function postRoutes(app: FastifyInstance) {
     });
   });
 
-  app.get("/posts/search", async (request, reply) => {
+  app.get("/posts/search", readAccess, async (request, reply) => {
     const { search } = searchPostsQuerySchema.parse(request.query);
 
     const searchPostsUseCase = makeSearchPostsUseCase();
@@ -50,7 +60,7 @@ export async function postRoutes(app: FastifyInstance) {
     return reply.status(200).send({ posts });
   });
 
-  app.get("/posts/:id", async (request, reply) => {
+  app.get("/posts/:id", readAccess, async (request, reply) => {
     const { id } = postParamsSchema.parse(request.params);
 
     const findPostByIdUseCase = makeFindPostByIdUseCase();
@@ -59,7 +69,7 @@ export async function postRoutes(app: FastifyInstance) {
     return reply.status(200).send(post);
   });
 
-  app.post("/posts", async (request, reply) => {
+  app.post("/posts", writeAccess, async (request, reply) => {
     const body = createPostBodySchema.parse(request.body);
 
     const createPostUseCase = makeCreatePostUseCase();
@@ -68,7 +78,7 @@ export async function postRoutes(app: FastifyInstance) {
     return reply.status(201).send(post);
   });
 
-  app.put("/posts/:id", async (request, reply) => {
+  app.put("/posts/:id", writeAccess, async (request, reply) => {
     const { id } = postParamsSchema.parse(request.params);
     const body = createPostBodySchema.parse(request.body);
 
@@ -78,7 +88,7 @@ export async function postRoutes(app: FastifyInstance) {
     return reply.status(200).send(post);
   });
 
-  app.delete("/posts/:id", async (request, reply) => {
+  app.delete("/posts/:id", writeAccess, async (request, reply) => {
     const { id } = postParamsSchema.parse(request.params);
 
     const deletePostUseCase = makeDeletePostUseCase();

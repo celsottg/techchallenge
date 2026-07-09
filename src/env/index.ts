@@ -8,6 +8,8 @@ const envSchema = z.object({
   POSTGRES_DB: z.string(),
   POSTGRES_HOST: z.string(),
   POSTGRES_PORT: z.coerce.number(),
+  PROFESSOR_ACCESS_TOKEN: z.string().min(1),
+  ALUNO_ACCESS_TOKEN: z.string().min(1),
 });
 
 export const env = envSchema.parse(process.env);

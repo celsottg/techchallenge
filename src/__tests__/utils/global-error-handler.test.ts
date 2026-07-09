@@ -3,6 +3,8 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { ResourceNotFoundError } from "../../use-cases/errors/resource-not-found-error.js";
+import { ForbiddenError } from "../../use-cases/errors/forbidden-error.js";
+import { UnauthorizedError } from "../../use-cases/errors/unauthorized-error.js";
 import { globalErrorHandler } from "../../utils/global-error-handler.js";
 
 function createMockReply() {
@@ -44,6 +46,28 @@ describe("globalErrorHandler", () => {
     expect(reply.status).toHaveBeenCalledWith(404);
     expect(reply.send).toHaveBeenCalledWith({
       message: "Resource not found",
+    });
+  });
+
+  it("deve retornar 401 para UnauthorizedError", () => {
+    const reply = createMockReply();
+
+    globalErrorHandler(new UnauthorizedError(), request, reply);
+
+    expect(reply.status).toHaveBeenCalledWith(401);
+    expect(reply.send).toHaveBeenCalledWith({
+      message: "Unauthorized",
+    });
+  });
+
+  it("deve retornar 403 para ForbiddenError", () => {
+    const reply = createMockReply();
+
+    globalErrorHandler(new ForbiddenError(), request, reply);
+
+    expect(reply.status).toHaveBeenCalledWith(403);
+    expect(reply.send).toHaveBeenCalledWith({
+      message: "Forbidden",
     });
   });
 

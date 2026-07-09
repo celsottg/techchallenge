@@ -37,6 +37,9 @@ POSTGRES_PASSWORD=techchallenge
 POSTGRES_DB=techchallenge
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
+
+PROFESSOR_ACCESS_TOKEN=professor-dev-token-change-me
+ALUNO_ACCESS_TOKEN=aluno-dev-token-change-me
 ```
 
 ### 3. Subir o banco de dados
@@ -89,6 +92,7 @@ A aplicação segue uma arquitetura em camadas: controllers HTTP delegam para us
 | Camada              | Responsabilidade                             |
 | ------------------- | -------------------------------------------- |
 | `http/controllers/` | Rotas e handlers HTTP                        |
+| `http/middleware/`  | Autenticação e autorização por access_token  |
 | `use-cases/`        | Regras de aplicação e orquestração           |
 | `repositories/`     | Contratos e implementações de acesso a dados |
 | `entities/`         | Modelos de domínio (`Post`)                  |
@@ -96,21 +100,44 @@ A aplicação segue uma arquitetura em camadas: controllers HTTP delegam para us
 | `env/`              | Validação de variáveis de ambiente com Zod   |
 | `utils/`            | Tratamento global de erros                   |
 
+## Autenticação
+
+Todas as rotas da API exigem um `access_token` enviado no header:
+
+```
+Authorization: Bearer <access_token>
+```
+
+Os tokens são configurados estaticamente no `.env` (não há endpoint de geração nesta versão):
+
+| Variável | Papel | Permissões |
+| -------- | ----- | ---------- |
+| `PROFESSOR_ACCESS_TOKEN` | Professor | Leitura e escrita (GET, POST, PUT, DELETE) |
+| `ALUNO_ACCESS_TOKEN` | Aluno | Apenas leitura (GET, GET `/search`, GET `/:id`) |
+
+Respostas de erro:
+
+| Status | Situação |
+| ------ | -------- |
+| `401` | Token ausente, malformado ou inválido |
+| `403` | Token válido, mas sem permissão para a operação (ex.: aluno tentando criar post) |
+
 ## Endpoints da API
 
-| Método   | Rota              | Descrição                                      | Body / Query params                                                                                |
-| -------- | ----------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `GET`    | `/posts`          | Lista posts com paginação                      | `page` (padrão: 1), `limit` (padrão: 10, máx: 100)                                                 |
-| `GET`    | `/posts/search`   | Busca posts por palavra-chave no título/conteúdo | `search` (obrigatório) — retorna `200` com lista de posts                                          |
-| `GET`    | `/posts/:id`      | Busca um post pelo id                          | `id` na URL — retorna `404` se não encontrado                                                      |
-| `POST`   | `/posts`          | Cria um novo post                              | `{ "titulo": "string", "conteudo": "string" }`                                                     |
-| `PUT`    | `/posts/:id`      | Atualiza um post pelo id                       | `id` na URL; body `{ "titulo": "string", "conteudo": "string" }` — retorna `404` se não encontrado |
-| `DELETE` | `/posts/:id`      | Remove um post pelo id                         | `id` na URL — retorna `404` se não encontrado                                                      |
+| Método   | Rota              | Descrição                                      | Autenticação | Body / Query params                                                                                |
+| -------- | ----------------- | ---------------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------- |
+| `GET`    | `/posts`          | Lista posts com paginação                      | Professor ou Aluno | `page` (padrão: 1), `limit` (padrão: 10, máx: 100)                                                 |
+| `GET`    | `/posts/search`   | Busca posts por palavra-chave no título/conteúdo | Professor ou Aluno | `search` (obrigatório) — retorna `200` com lista de posts                                          |
+| `GET`    | `/posts/:id`      | Busca um post pelo id                          | Professor ou Aluno | `id` na URL — retorna `404` se não encontrado                                                      |
+| `POST`   | `/posts`          | Cria um novo post                              | Professor | `{ "titulo": "string", "conteudo": "string" }`                                                     |
+| `PUT`    | `/posts/:id`      | Atualiza um post pelo id                       | Professor | `id` na URL; body `{ "titulo": "string", "conteudo": "string" }` — retorna `404` se não encontrado |
+| `DELETE` | `/posts/:id`      | Remove um post pelo id                         | Professor | `id` na URL — retorna `404` se não encontrado                                                      |
 
 ### Exemplo — criar post
 
 ```bash
 curl -X POST http://localhost:3000/posts \
+  -H "Authorization: Bearer professor-dev-token-change-me" \
   -H "Content-Type: application/json" \
   -d '{"titulo": "Novo post", "conteudo": "Texto do post"}'
 ```
@@ -130,7 +157,8 @@ Resposta (`201`):
 ### Exemplo — remover post
 
 ```bash
-curl -X DELETE http://localhost:3000/posts/1
+curl -X DELETE http://localhost:3000/posts/1 \
+  -H "Authorization: Bearer professor-dev-token-change-me"
 ```
 
 Resposta (`204`): sem corpo.
@@ -139,6 +167,7 @@ Resposta (`204`): sem corpo.
 
 ```bash
 curl -X PUT http://localhost:3000/posts/1 \
+  -H "Authorization: Bearer professor-dev-token-change-me" \
   -H "Content-Type: application/json" \
   -d '{"titulo": "Post atualizado", "conteudo": "Novo conteúdo do post"}'
 ```
@@ -158,7 +187,8 @@ Resposta (`200`):
 ### Exemplo — listar posts
 
 ```bash
-curl "http://localhost:3000/posts?page=1&limit=10"
+curl "http://localhost:3000/posts?page=1&limit=10" \
+  -H "Authorization: Bearer aluno-dev-token-change-me"
 ```
 
 Resposta (`200`):
@@ -183,7 +213,8 @@ Resposta (`200`):
 ### Exemplo — buscar post por id
 
 ```bash
-curl http://localhost:3000/posts/1
+curl http://localhost:3000/posts/1 \
+  -H "Authorization: Bearer aluno-dev-token-change-me"
 ```
 
 Resposta (`200`):
@@ -201,7 +232,8 @@ Resposta (`200`):
 ### Exemplo — buscar posts por palavra-chave
 
 ```bash
-curl "http://localhost:3000/posts/search?search=primeiro"
+curl "http://localhost:3000/posts/search?search=primeiro" \
+  -H "Authorization: Bearer aluno-dev-token-change-me"
 ```
 
 Resposta (`200`):
@@ -297,8 +329,10 @@ techchallenge/
 │   │   ├── models/             # Contratos TypeScript (IPost)
 │   │   └── post.ts             # Classe de domínio Post
 │   ├── env/                    # Validação de variáveis de ambiente
-│   ├── http/controllers/
-│   │   └── post/               # Rotas de posts (GET, POST, PUT e DELETE /posts)
+│   ├── http/
+│   │   ├── controllers/
+│   │   │   └── post/               # Rotas de posts (GET, POST, PUT e DELETE /posts)
+│   │   └── middleware/             # Autenticação e autorização por access_token
 │   ├── lib/pg/                 # Pool PostgreSQL
 │   ├── repositories/
 │   │   ├── post.repository.interface.ts
