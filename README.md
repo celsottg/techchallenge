@@ -340,6 +340,10 @@ docker compose logs postgres
 
 Confirme que o container está rodando (`docker compose ps`) e que as variáveis do `.env` coincidem com as do `docker-compose.yml`.
 
+## Release
+
+Foi criada uma release no GitHub, de modo a taguear o "fim" dessa fase. Não sei como será a continuidade, mas se seguirmos este projeto, acredito que fará sentido para acompanhar os marcos de entrega.
+
 
 ## Dificuldades no projeto
 
