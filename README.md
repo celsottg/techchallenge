@@ -62,10 +62,12 @@ Para parar o banco:
 docker compose down
 ```
 
-Para gerar primeiros registros no banco para testes:
+Para gerar primeiros registros no banco para testes (tabelas, tipos de usuário com tokens, 2 usuários de mock e 2 posts):
 ```bash
 docker exec -i techchallenge-postgres psql -U root -d techchallenge < ./bd/schema_completo.sql
 ```
+
+> **Aplicação também auto-inicializa o schema**: ao subir o servidor (`npm run start:dev` ou `npm run start`), o módulo `src/lib/pg/init-schema.ts` garante que as 3 tabelas (`techchallenge_posts`, `techchallenge_usertype`, `techchallenge_user`) existam e insere os dois tipos de usuário padrão (PROFESSOR e ALUNO) com os tokens do `.env`. Ou seja: mesmo em um banco vazio/volume novo, basta subir a app e o schema + roles são criados automaticamente.
 
 ### 4. Instalar dependências
 
@@ -107,27 +109,91 @@ A aplicação segue uma arquitetura em camadas: controllers HTTP delegam para us
 
 ## Autenticação
 
-Todas as rotas da API exigem um `access_token` enviado no header:
+Todas as rotas de **conteúdo** (`/posts/*`) exigem um `access_token` enviado no header:
 
 ```
 Authorization: Bearer <access_token>
 ```
 
-Os tokens são configurados estaticamente no `.env` (não há endpoint de geração nesta versão):
+### 🔑 Como o front obtém o token: endpoint `/login`
 
-| Variável | Papel | Permissões |
+O front-end **não precisa saber os tokens hardcoded do `.env`**. Em vez disso:
+
+1. O usuário informa suas credenciais (email + senha) em uma tela de login no front
+2. O front chama `POST /login` passando `{ email, senha }`
+3. O backend:
+   - Valida email+senha na tabela `techchallenge_user`
+   - Resolve o papel (role) via `techchallenge_user.tipo_usuario_id` → `techchallenge_usertype`
+   - Retorna `{ token, role, usuario }`
+4. O front usa o `token` recebido no header `Authorization: Bearer <token>` nas próximas chamadas a `/posts/*`
+
+> ⚠️ **Nota**: nesta versão, o **token não é JWT**. É uma string estática, idêntica em todos os logins do mesmo papel, e salva em `techchallenge_usertype.token`. O middleware `authenticate` continua comparando os tokens com os valores do `.env` (que estão sincronizados com o banco pela inicialização automática). Em versões futuras pode ser substituído por JWT sem alterar a interface do `/login`.
+
+### Tokens e permissões
+
+Os tokens são configurados estaticamente no `.env` e automaticamente sincronizados na tabela `techchallenge_usertype` quando a aplicação sobe:
+
+| Variável | Papel (`role`) | Permissões |
 | -------- | ----- | ---------- |
-| `PROFESSOR_ACCESS_TOKEN` | Professor | Leitura e escrita (GET, POST, PUT, DELETE) |
-| `ALUNO_ACCESS_TOKEN` | Aluno | Apenas leitura (GET, GET `/search`, GET `/:id`) |
+| `PROFESSOR_ACCESS_TOKEN` | `PROFESSOR` | Leitura e escrita (GET, POST, PUT, DELETE) |
+| `ALUNO_ACCESS_TOKEN` | `ALUNO` | Apenas leitura (GET `/posts`, GET `/posts/search`, GET `/posts/:id`) |
 
-Respostas de erro:
+### Respostas de erro (autenticação / autorização)
 
 | Status | Situação |
 | ------ | -------- |
-| `401` | Token ausente, malformado ou inválido |
-| `403` | Token válido, mas sem permissão para a operação (ex.: aluno tentando criar post) |
+| `400` | Body inválido no `/login` (campos ausentes / vazios) — via Zod |
+| `401` | Credenciais inválidas no `/login` (email ou senha errados; ou inconsistência no role) **ou** token ausente/malformado/inválido nos endpoints de posts |
+| `403` | Token válido, mas sem permissão para a operação (ex.: aluno tentando criar/editar/deletar post) |
+
+---
+
+### 🗄️ Modelo de dados do login (PostgreSQL)
+
+O schema completo (incluindo tabelas de login) está em `bd/schema_completo.sql`.
+
+**Tabela `techchallenge_usertype`** — papéis / roles + token de acesso:
+
+| Coluna | Tipo | Descrição |
+| --- | --- | --- |
+| `id` | BIGSERIAL PK | |
+| `descricao` | VARCHAR(50) | `PROFESSOR` ou `ALUNO` |
+| `token` | VARCHAR(255) | access_token usado no header `Authorization` |
+
+Registros padrão (criados automaticamente):
+
+| id | descricao | token |
+| --- | --- | --- |
+| 1 | PROFESSOR | `professor-dev-token-change-me` |
+| 2 | ALUNO | `aluno-dev-token-change-me` |
+
+**Tabela `techchallenge_user`** — usuários cadastrados:
+
+| Coluna | Tipo | Descrição |
+| --- | --- | --- |
+| `id` | BIGSERIAL PK | |
+| `nome` | VARCHAR(255) | Nome completo do usuário |
+| `email` | VARCHAR(255) UNIQUE | **Login do usuário** (identificador único) |
+| `senha` | VARCHAR(255) | Senha em texto plano nesta versão |
+| `tipo_usuario_id` | BIGINT FK → `techchallenge_usertype.id` | PAPEL do usuário (PROFESSOR / ALUNO) |
+| `data_criacao` | TIMESTAMPTZ | default `CURRENT_TIMESTAMP` |
+
+Usuários de mock do `schema_completo.sql`:
+
+| nome | email | senha | papel |
+| --- | --- | --- | --- |
+| Dr. Carlos Mendes | `carlos.mendes@professor.fiap.br` | `senha-professor-123` | PROFESSOR |
+| Ana Beatriz Silva | `ana.beatriz@aluno.fiap.br` | `senha-aluno-456` | ALUNO |
 
 ## Endpoints da API
+
+### Autenticação
+
+| Método | Rota    | Descrição                 | Autenticação       | Body / Query params                                                           |
+| ------ | ------- | ------------------------- | ------------------ | ----------------------------------------------------------------------------- |
+| `POST` | `/login`| Autentica usuário e retorna token (Bearer) para chamar os outros endpoints | **Pública** (sem header) | `{ "email": "string", "senha": "string" }` — retorna `200` com `{ token, role, usuario }`, `401` se credenciais inválidas, `400` se body inválido |
+
+### Posts (requerem Bearer token retornado no `/login`)
 
 | Método   | Rota              | Descrição                                      | Autenticação | Body / Query params                                                                                |
 | -------- | ----------------- | ---------------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------- |
@@ -137,6 +203,124 @@ Respostas de erro:
 | `POST`   | `/posts`          | Cria um novo post                              | Professor | `{ "titulo": "string", "conteudo": "string" }`                                                     |
 | `PUT`    | `/posts/:id`      | Atualiza um post pelo id                       | Professor | `id` na URL; body `{ "titulo": "string", "conteudo": "string" }` — retorna `404` se não encontrado |
 | `DELETE` | `/posts/:id`      | Remove um post pelo id                         | Professor | `id` na URL — retorna `404` se não encontrado                                                      |
+
+### ⚡ Fluxo recomendado para o front-end (passo-a-passo)
+
+```
+Tela de login do usuário  ──► POST /login {email,senha}
+                                   │
+                                   ├── 400 → mostra erros de validação dos campos (Zod)
+                                   ├── 401 → mostra "email ou senha inválidos" (mensagem genérica)
+                                   └── 200 → salva {token, role, usuario} no estado do front (ex.: localStorage)
+                                               │
+                                               ▼
+                                   Todas as próximas requisições a /posts enviam:
+                                       Authorization: Bearer <token>
+```
+
+---
+
+### Exemplo — login de professor
+
+```bash
+curl -X POST http://localhost:3000/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "carlos.mendes@professor.fiap.br", "senha": "senha-professor-123"}'
+```
+
+Resposta (`200`):
+
+```json
+{
+  "token": "professor-dev-token-change-me",
+  "role": "PROFESSOR",
+  "usuario": {
+    "id": 1,
+    "nome": "Dr. Carlos Mendes",
+    "email": "carlos.mendes@professor.fiap.br"
+  }
+}
+```
+
+---
+
+### Exemplo — login de aluno
+
+```bash
+curl -X POST http://localhost:3000/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "ana.beatriz@aluno.fiap.br", "senha": "senha-aluno-456"}'
+```
+
+Resposta (`200`):
+
+```json
+{
+  "token": "aluno-dev-token-change-me",
+  "role": "ALUNO",
+  "usuario": {
+    "id": 2,
+    "nome": "Ana Beatriz Silva",
+    "email": "ana.beatriz@aluno.fiap.br"
+  }
+}
+```
+
+---
+
+### Exemplo — usar token obtido no login para listar posts (integração front → posts)
+
+```bash
+# 1) Faz login (salva o TOKEN retornado)
+TOKEN=$(curl -s -X POST http://localhost:3000/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"carlos.mendes@professor.fiap.br","senha":"senha-professor-123"}' \
+  | node -e "process.stdin.on('data', d => console.log(JSON.parse(d).token))")
+
+# 2) Usa o token para listar posts (qualquer endpoint de /posts)
+curl "http://localhost:3000/posts?page=1&limit=10" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+### Exemplo — erro de credenciais no login (401)
+
+```bash
+curl -X POST http://localhost:3000/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"ana.beatriz@aluno.fiap.br","senha":"senha-errada"}'
+```
+
+Resposta (`401 Unauthorized`, mensagem genérica — não revela se erro foi email ou senha):
+
+```json
+{ "message": "Unauthorized" }
+```
+
+---
+
+### Exemplo — body inválido no login (400)
+
+```bash
+curl -X POST http://localhost:3000/login \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+Resposta (`400 Validation error` com detalhes de campo via Zod):
+
+```json
+{
+  "message": "Validation error",
+  "errors": {
+    "email":  ["Invalid input: expected string, received undefined"],
+    "senha":  ["Invalid input: expected string, received undefined"]
+  }
+}
+```
+
+---
 
 ### Exemplo — criar post
 
@@ -326,22 +510,36 @@ techchallenge/
 │   └── workflows/
 │       └── main.yaml           # Pipeline de CI (lint, test, build)
 ├── bd/
-│   └── schema_bd.sql           # Script de inicialização do banco
+│   ├── schema_bd.sql           # Script mínimo de inicialização (tabela de posts)
+│   └── schema_completo.sql     # Schema completo + dados de mock (posts, users, usertypes)
 ├── src/
-│   ├── app.ts                  # Bootstrap Fastify e registro de rotas
-│   ├── server.ts               # Entrada do servidor HTTP
+│   ├── app.ts                  # Bootstrap Fastify e registro de rotas (auth + posts)
+│   ├── server.ts               # Entrada do servidor HTTP + inicialização do schema
 │   ├── entities/
-│   │   ├── models/             # Contratos TypeScript (IPost)
-│   │   └── post.ts             # Classe de domínio Post
-│   ├── env/                    # Validação de variáveis de ambiente
+│   │   ├── models/             # Contratos TypeScript:
+│   │   │   ├── post.model.ts   #   IPost, ICreatePost, IUpdatePost
+│   │   │   ├── auth.model.ts   #   Role ("PROFESSOR"|"ALUNO"), AuthContext
+│   │   │   └── user.model.ts   #   IUser, IUserType, ILoginRequest, ILoginResponse
+│   │   ├── post.ts             # Classe de domínio Post
+│   │   ├── user.ts             # Classe de domínio User
+│   │   └── usertype.ts         # Classe de domínio UserType
+│   ├── env/                    # Validação de variáveis de ambiente com Zod
 │   ├── http/
 │   │   ├── controllers/
-│   │   │   └── post/               # Rotas de posts (GET, POST, PUT e DELETE /posts)
-│   │   └── middleware/             # Autenticação e autorização por access_token
-│   ├── lib/pg/                 # Pool PostgreSQL
+│   │   │   ├── auth/
+│   │   │   │   └── routes.ts   # POST /login (pública, sem autenticação)
+│   │   │   └── post/
+│   │   │       └── routes.ts   # GET/POST/PUT/DELETE /posts (protegidas)
+│   │   └── middleware/
+│   │       ├── authenticate.ts # Valida Bearer token (comparando com .env)
+│   │       └── authorize.ts    # Valida papel (role) permitido na rota
+│   ├── lib/pg/
+│   │   ├── index.ts            # Pool de conexão PostgreSQL (driver pg)
+│   │   └── init-schema.ts      # Auto-cria 3 tabelas + roles/tokens na inicialização
 │   ├── repositories/
 │   │   ├── post.repository.interface.ts
-│   │   └── pg/                 # Implementação com driver pg
+│   │   ├── user.repository.interface.ts
+│   │   └── pg/                 # Implementações PostRepository, UserRepository (placeholders $1,$2)
 │   ├── use-cases/
 │   │   ├── find-posts.use-case.ts
 │   │   ├── find-post-by-id.use-case.ts
@@ -349,10 +547,11 @@ techchallenge/
 │   │   ├── create-post.use-case.ts
 │   │   ├── update-post.use-case.ts
 │   │   ├── delete-post.use-case.ts
-│   │   ├── errors/
-│   │   └── factory/
-│   ├── __tests__/              # Testes unitários (Jest + mocks)
-│   └── utils/                  # Tratamento global de erros
+│   │   ├── login.use-case.ts   # Valida credenciais e resolve token/role
+│   │   ├── errors/             # UnauthorizedError, ForbiddenError, ResourceNotFoundError
+│   │   └── factory/            # Factories: make-create-post-use-case, make-login-use-case, ...
+│   ├── __tests__/              # Testes unitários (Jest + mocks) — 38 testes
+│   └── utils/global-error-handler.ts  # Tratamento global (Zod 400, 401, 403, 404, 500)
 ├── jest.config.ts              # Configuração do Jest
 ├── coverage/                   # Relatório de cobertura (gerado por npm run test:coverage)
 ├── docker-compose.yml          # Configuração do PostgreSQL
