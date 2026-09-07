@@ -62,6 +62,11 @@ Para parar o banco:
 docker compose down
 ```
 
+Para gerar primeiros registros no banco para testes:
+```bash
+docker exec -i techchallenge-postgres psql -U root -d techchallenge < ./bd/schema_completo.sql
+```
+
 ### 4. Instalar dependências
 
 ```bash
