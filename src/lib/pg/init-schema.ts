@@ -59,6 +59,30 @@ export async function initializeSchema(): Promise<void> {
                     (SELECT COALESCE(MAX(id), 0) FROM techchallenge_user))`,
     );
 
+    await pool.query(
+      `
+      INSERT INTO techchallenge_user (nome, email, senha, tipo_usuario_id)
+      VALUES
+          ('Dr. Carlos Mendes', 'carlos.mendes@professor.fiap.br', 'senha-professor-123', 1),
+          ('Ana Beatriz Silva', 'ana.beatriz@aluno.fiap.br', 'senha-aluno-456', 2)
+      ON CONFLICT (email) DO NOTHING;
+      `,
+    );
+
+    await pool.query(
+      `
+      INSERT INTO techchallenge_posts (id, titulo, conteudo, data_publicacao, data_atualizacao)
+      VALUES
+          (1, 'Boas-vindas ao Tech Challenge',
+           E'Olá, turma!\n\nSejam todos muito bem-vindos ao nosso Tech Challenge. Neste módulo construiremos uma API REST completa com Node.js, TypeScript, Fastify e PostgreSQL. Preparei o material de apoio na área do aluno.\n\nQualquer dúvida, estou à disposição.\n\nAtenciosamente,\nProf. Carlos Mendes',
+           '2026-08-01 09:00:00-03', '2026-08-01 09:00:00-03'),
+          (2, 'Aula 02 — Arquitetura em Camadas e Use Cases',
+           E'Na aula de hoje vamos explorar a arquitetura em camadas:\n\n1. Controllers HTTP (rotas e handlers)\n2. Use Cases (regras de aplicação)\n3. Repositories (acesso a dados via interface)\n4. Entities (modelos de domínio)\n\nLembre-se de fazer os exercícios propostos e subir a sua branch no repositório até a próxima sexta-feira.\n\nBons estudos!',
+           '2026-08-05 19:30:00-03', '2026-08-06 10:15:00-03')
+      ON CONFLICT (id) DO NOTHING;
+      `,
+    );
+
     console.log("Schema do banco inicializado com sucesso.");
   } catch (error) {
     console.error("Falha ao inicializar schema do banco:", error);
