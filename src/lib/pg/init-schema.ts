@@ -46,17 +46,20 @@ export async function initializeSchema(): Promise<void> {
 
     await pool.query(
       `SELECT setval(pg_get_serial_sequence('techchallenge_usertype', 'id'),
-                    (SELECT COALESCE(MAX(id), 0) FROM techchallenge_usertype))`,
+                    (SELECT COALESCE(MAX(id), 1) FROM techchallenge_usertype),
+                    (SELECT MAX(id) IS NOT NULL FROM techchallenge_usertype))`,
     );
 
     await pool.query(
       `SELECT setval(pg_get_serial_sequence('techchallenge_posts', 'id'),
-                    (SELECT COALESCE(MAX(id), 0) FROM techchallenge_posts))`,
+                    (SELECT COALESCE(MAX(id), 1) FROM techchallenge_posts),
+                    (SELECT MAX(id) IS NOT NULL FROM techchallenge_posts))`,
     );
 
     await pool.query(
       `SELECT setval(pg_get_serial_sequence('techchallenge_user', 'id'),
-                    (SELECT COALESCE(MAX(id), 0) FROM techchallenge_user))`,
+                    (SELECT COALESCE(MAX(id), 1) FROM techchallenge_user),
+                    (SELECT MAX(id) IS NOT NULL FROM techchallenge_user))`,
     );
 
     await pool.query(
