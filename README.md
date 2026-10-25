@@ -92,6 +92,28 @@ npm run start
 
 A API ficará disponível em `http://localhost:3000` (ou na porta definida em `PORT`).
 
+## Executando via Docker (sem clonar o projeto)
+
+A imagem da API é construída pelo [`Dockerfile`](Dockerfile) (multi-stage, Node 22 Alpine) e pode ser publicada no Docker Hub.
+
+**Publicar a imagem** (substitua `SEU_USUARIO`):
+
+```bash
+docker build -t SEU_USUARIO/techchallenge:latest .
+docker login
+docker push SEU_USUARIO/techchallenge:latest
+```
+
+**Executar a API + PostgreSQL** a partir da imagem publicada, apenas com o arquivo [`docker-compose.prod.yml`](docker-compose.prod.yml):
+
+```bash
+DOCKER_IMAGE=SEU_USUARIO/techchallenge:latest docker compose -f docker-compose.prod.yml up -d
+```
+
+A API sobe em `http://localhost:3000`; o schema, os papéis e os usuários de mock são criados automaticamente. Os tokens podem ser trocados via `PROFESSOR_ACCESS_TOKEN` e `ALUNO_ACCESS_TOKEN`.
+
+Para rodar só a imagem da API apontando para um PostgreSQL existente, informe as variáveis do `.env` com `-e` (ou `--env-file`), usando `POSTGRES_HOST` acessível de dentro do container.
+
 ## Arquitetura
 
 A aplicação segue uma arquitetura em camadas: controllers HTTP delegam para use cases, que dependem de interfaces de repositório implementadas com o driver `pg`.

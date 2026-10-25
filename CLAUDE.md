@@ -12,6 +12,7 @@ API REST (Fastify 5 + PostgreSQL via `pg`, TypeScript ESM, Node 22+) do Tech Cha
 - `npm run build` — `tsup` gera ESM em `build/`
 - `npm run lint` — `eslint src`; `npm run format` — prettier
 - `npm test` — Jest; teste único: `npm test -- src/__tests__/use-cases/login.use-case.test.ts` (ou `-t "nome do teste"`)
+- `docker build -t techchallenge .` — gera a imagem da API (`Dockerfile`); `docker-compose.prod.yml` sobe API + PostgreSQL a partir de uma imagem publicada (`DOCKER_IMAGE=...`)
 - `npm run test:coverage` — cobertura com threshold global de 30%
 - Seed opcional: `docker exec -i techchallenge-postgres psql -U root -d techchallenge < ./bd/schema_completo.sql`
 
@@ -28,6 +29,13 @@ Camadas: `http/controllers` (rotas Fastify + validação Zod) → `use-cases` �
 - **Autenticação não é JWT**: o token é uma string estática por papel. `POST /login` valida email/senha e devolve o token de `techchallenge_usertype`; o middleware `authenticate` ignora o banco e compara o Bearer token com `PROFESSOR_ACCESS_TOKEN`/`ALUNO_ACCESS_TOKEN` do `.env` (`timingSafeEqual`), preenchendo `request.auth = { role }` (tipado em `src/@types/fastify.d.ts`). `authorize(...roles)` é uma factory de preHandler que checa `request.auth.role`.
 - **Erros**: use cases lançam `UnauthorizedError`, `ForbiddenError` ou `ResourceNotFoundError`; `utils/global-error-handler.ts` os mapeia para 401/403/404, e `ZodError` para 400 (resto 500).
 - **Variáveis de ambiente** são validadas com Zod em `src/env/index.ts`; novas variáveis precisam ser adicionadas ali e em `.env.example`.
+
+## Fluxo de trabalho (Git)
+
+- Nunca commitar direto na `master`. Toda alteração deve ser feita em uma branch própria (ex.: `feat/...`, `fix/...`, `docs/...`) e levada para a `master` via Pull Request (`gh pr create`).
+- Se estiver na `master` com alterações pendentes, crie a branch antes de commitar.
+- Mensagens de commit seguem Conventional Commits em português (ex.: `feat(auth): ...`), como no histórico.
+- O PR só deve ser mergeado com o CI (lint → test → build) passando.
 
 ## Convenções
 

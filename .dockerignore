@@ -1,0 +1,11 @@
+node_modules
+build
+coverage
+.git
+.github
+.trae
+.env
+bd
+*.md
+Dockerfile
+docker-compose*.yml

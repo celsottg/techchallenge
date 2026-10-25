@@ -1,0 +1,36 @@
+# Execução da API a partir da imagem publicada no Docker Hub (sem clonar o código).
+# Uso: docker compose -f docker-compose.prod.yml up -d
+services:
+  postgres:
+    image: postgres:14.23-trixie
+    environment:
+      POSTGRES_PASSWORD: "techchallenge"
+      POSTGRES_USER: "root"
+      POSTGRES_DB: "techchallenge"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d techchallenge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: ${DOCKER_IMAGE:-SEU_USUARIO/techchallenge:latest}
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: techchallenge
+      POSTGRES_DB: techchallenge
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      PROFESSOR_ACCESS_TOKEN: ${PROFESSOR_ACCESS_TOKEN:-professor-dev-token-change-me}
+      ALUNO_ACCESS_TOKEN: ${ALUNO_ACCESS_TOKEN:-aluno-dev-token-change-me}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
