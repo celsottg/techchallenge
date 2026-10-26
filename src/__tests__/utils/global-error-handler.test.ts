@@ -2,6 +2,7 @@ import { describe, expect, it, jest } from "@jest/globals";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
+import { EmailAlreadyInUseError } from "../../use-cases/errors/email-already-in-use-error.js";
 import { ResourceNotFoundError } from "../../use-cases/errors/resource-not-found-error.js";
 import { ForbiddenError } from "../../use-cases/errors/forbidden-error.js";
 import { UnauthorizedError } from "../../use-cases/errors/unauthorized-error.js";
@@ -68,6 +69,17 @@ describe("globalErrorHandler", () => {
     expect(reply.status).toHaveBeenCalledWith(403);
     expect(reply.send).toHaveBeenCalledWith({
       message: "Forbidden",
+    });
+  });
+
+  it("deve retornar 409 para EmailAlreadyInUseError", () => {
+    const reply = createMockReply();
+
+    globalErrorHandler(new EmailAlreadyInUseError(), request, reply);
+
+    expect(reply.status).toHaveBeenCalledWith(409);
+    expect(reply.send).toHaveBeenCalledWith({
+      message: "Email already in use",
     });
   });
 

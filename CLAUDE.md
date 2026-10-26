@@ -27,7 +27,7 @@ Camadas: `http/controllers` (rotas Fastify + validação Zod) → `use-cases` �
 - **Injeção de dependências manual**: cada use case tem uma factory em `use-cases/factory/make-*.ts` que instancia o repositório concreto. Controllers chamam a factory; testes instanciam o use case com repositório mockado (`src/__tests__/mocks`).
 - **`src/app.ts`** monta o Fastify (rotas + `globalErrorHandler`); **`src/server.ts`** faz o listen e chama `initializeSchema()` (`lib/pg/init-schema.ts`), que cria as 3 tabelas (`techchallenge_posts`, `techchallenge_usertype`, `techchallenge_user`) e faz upsert dos tipos PROFESSOR/ALUNO com os tokens do `.env`.
 - **Autenticação não é JWT**: o token é uma string estática por papel. `POST /login` valida email/senha e devolve o token de `techchallenge_usertype`; o middleware `authenticate` ignora o banco e compara o Bearer token com `PROFESSOR_ACCESS_TOKEN`/`ALUNO_ACCESS_TOKEN` do `.env` (`timingSafeEqual`), preenchendo `request.auth = { role }` (tipado em `src/@types/fastify.d.ts`). `authorize(...roles)` é uma factory de preHandler que checa `request.auth.role`.
-- **Erros**: use cases lançam `UnauthorizedError`, `ForbiddenError` ou `ResourceNotFoundError`; `utils/global-error-handler.ts` os mapeia para 401/403/404, e `ZodError` para 400 (resto 500).
+- **Erros**: use cases lançam `UnauthorizedError`, `ForbiddenError`, `ResourceNotFoundError` ou `EmailAlreadyInUseError`; `utils/global-error-handler.ts` os mapeia para 401/403/404/409, e `ZodError` para 400 (resto 500).
 - **Variáveis de ambiente** são validadas com Zod em `src/env/index.ts`; novas variáveis precisam ser adicionadas ali e em `.env.example`.
 
 ## Fluxo de trabalho (Git)
