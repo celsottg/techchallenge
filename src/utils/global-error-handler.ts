@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { ZodError } from "zod";
 
+import { EmailAlreadyInUseError } from "../use-cases/errors/email-already-in-use-error.js";
 import { ForbiddenError } from "../use-cases/errors/forbidden-error.js";
 import { ResourceNotFoundError } from "../use-cases/errors/resource-not-found-error.js";
 import { UnauthorizedError } from "../use-cases/errors/unauthorized-error.js";
@@ -32,6 +33,12 @@ export function globalErrorHandler(
   if (error instanceof ResourceNotFoundError) {
     return reply.status(404).send({
       message: "Resource not found",
+    });
+  }
+
+  if (error instanceof EmailAlreadyInUseError) {
+    return reply.status(409).send({
+      message: "Email already in use",
     });
   }
 

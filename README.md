@@ -131,7 +131,7 @@ A aplicação segue uma arquitetura em camadas: controllers HTTP delegam para us
 
 ## Autenticação
 
-Todas as rotas de **conteúdo** (`/posts/*`) exigem um `access_token` enviado no header:
+Todas as rotas de **conteúdo** (`/posts/*`) e de **professores** (`/professores/*`) exigem um `access_token` enviado no header:
 
 ```
 Authorization: Bearer <access_token>
@@ -147,7 +147,7 @@ O front-end **não precisa saber os tokens hardcoded do `.env`**. Em vez disso:
    - Valida email+senha na tabela `techchallenge_user`
    - Resolve o papel (role) via `techchallenge_user.tipo_usuario_id` → `techchallenge_usertype`
    - Retorna `{ token, role, usuario }`
-4. O front usa o `token` recebido no header `Authorization: Bearer <token>` nas próximas chamadas a `/posts/*`
+4. O front usa o `token` recebido no header `Authorization: Bearer <token>` nas próximas chamadas a `/posts/*` e `/professores/*`
 
 > ⚠️ **Nota**: nesta versão, o **token não é JWT**. É uma string estática, idêntica em todos os logins do mesmo papel, e salva em `techchallenge_usertype.token`. O middleware `authenticate` continua comparando os tokens com os valores do `.env` (que estão sincronizados com o banco pela inicialização automática). Em versões futuras pode ser substituído por JWT sem alterar a interface do `/login`.
 
@@ -158,7 +158,7 @@ Os tokens são configurados estaticamente no `.env` e automaticamente sincroniza
 | Variável | Papel (`role`) | Permissões |
 | -------- | ----- | ---------- |
 | `PROFESSOR_ACCESS_TOKEN` | `PROFESSOR` | Leitura e escrita (GET, POST, PUT, DELETE) |
-| `ALUNO_ACCESS_TOKEN` | `ALUNO` | Apenas leitura (GET `/posts`, GET `/posts/search`, GET `/posts/:id`) |
+| `ALUNO_ACCESS_TOKEN` | `ALUNO` | Apenas leitura (GET `/posts`, GET `/posts/search`, GET `/posts/:id`, GET `/professores`, GET `/professores/:id`) |
 
 ### Respostas de erro (autenticação / autorização)
 
@@ -166,7 +166,7 @@ Os tokens são configurados estaticamente no `.env` e automaticamente sincroniza
 | ------ | -------- |
 | `400` | Body inválido no `/login` (campos ausentes / vazios) — via Zod |
 | `401` | Credenciais inválidas no `/login` (email ou senha errados; ou inconsistência no role) **ou** token ausente/malformado/inválido nos endpoints de posts |
-| `403` | Token válido, mas sem permissão para a operação (ex.: aluno tentando criar/editar/deletar post) |
+| `403` | Token válido, mas sem permissão para a operação (ex.: aluno tentando criar/editar/deletar post ou professor) |
 
 ---
 
@@ -225,6 +225,18 @@ Usuários de mock do `schema_completo.sql`:
 | `POST`   | `/posts`          | Cria um novo post                              | Professor | `{ "titulo": "string", "conteudo": "string" }`                                                     |
 | `PUT`    | `/posts/:id`      | Atualiza um post pelo id                       | Professor | `id` na URL; body `{ "titulo": "string", "conteudo": "string" }` — retorna `404` se não encontrado |
 | `DELETE` | `/posts/:id`      | Remove um post pelo id                         | Professor | `id` na URL — retorna `404` se não encontrado                                                      |
+
+### Professores (requerem Bearer token retornado no `/login`)
+
+Professores são os registros de `techchallenge_user` cujo `tipo_usuario_id` aponta para o tipo `PROFESSOR` em `techchallenge_usertype`. Essas rotas só enxergam professores: um `id` de aluno retorna `404`. A `senha` nunca é devolvida nas respostas, e o professor criado já consegue autenticar via `POST /login`.
+
+| Método   | Rota               | Descrição                          | Autenticação       | Body / Query params |
+| -------- | ------------------ | ---------------------------------- | ------------------ | ------------------- |
+| `GET`    | `/professores`     | Lista professores com paginação    | Professor ou Aluno | `page` (padrão: 1), `limit` (padrão: 10, máx: 100) — retorna `{ professores, page, limit, total }` |
+| `GET`    | `/professores/:id` | Busca um professor pelo id         | Professor ou Aluno | `id` na URL — retorna `404` se não encontrado |
+| `POST`   | `/professores`     | Cadastra um novo professor         | Professor          | `{ "nome": "string", "email": "string", "senha": "string (mín. 6)" }` — retorna `201`, `409` se o email já estiver em uso |
+| `PUT`    | `/professores/:id` | Atualiza um professor pelo id      | Professor          | `id` na URL; body `{ "nome": "string", "email": "string", "senha"?: "string" }` (sem `senha`, mantém a atual) — retorna `404` se não encontrado, `409` se o email for de outro usuário |
+| `DELETE` | `/professores/:id` | Remove um professor pelo id        | Professor          | `id` na URL — retorna `204`, `404` se não encontrado |
 
 ### ⚡ Fluxo recomendado para o front-end (passo-a-passo)
 
@@ -392,6 +404,51 @@ Resposta (`200`):
   "conteudo": "Novo conteúdo do post",
   "data_publicacao": "2026-06-30T01:15:20.103Z",
   "data_atualizacao": "2026-07-05T17:30:00.000Z"
+}
+```
+
+### Exemplo — cadastrar professor
+
+```bash
+curl -X POST http://localhost:3000/professores \
+  -H "Authorization: Bearer professor-dev-token-change-me" \
+  -H "Content-Type: application/json" \
+  -d '{"nome": "Profa. Marina Souza", "email": "marina.souza@professor.fiap.br", "senha": "senha-marina-123"}'
+```
+
+Resposta (`201`):
+
+```json
+{
+  "id": 3,
+  "nome": "Profa. Marina Souza",
+  "email": "marina.souza@professor.fiap.br",
+  "data_criacao": "2026-10-26T10:45:12.585Z"
+}
+```
+
+### Exemplo — listar professores
+
+```bash
+curl "http://localhost:3000/professores?page=1&limit=10" \
+  -H "Authorization: Bearer aluno-dev-token-change-me"
+```
+
+Resposta (`200`):
+
+```json
+{
+  "professores": [
+    {
+      "id": 1,
+      "nome": "Dr. Carlos Mendes",
+      "email": "carlos.mendes@professor.fiap.br",
+      "data_criacao": "2026-08-01T12:00:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 10,
+  "total": 1
 }
 ```
 
