@@ -131,7 +131,7 @@ A aplicação segue uma arquitetura em camadas: controllers HTTP delegam para us
 
 ## Autenticação
 
-Todas as rotas de **conteúdo** (`/posts/*`) e de **professores** (`/professores/*`) exigem um `access_token` enviado no header:
+Todas as rotas de **conteúdo** (`/posts/*`), de **professores** (`/professores/*`) e de **alunos** (`/alunos/*`) exigem um `access_token` enviado no header:
 
 ```
 Authorization: Bearer <access_token>
@@ -147,7 +147,7 @@ O front-end **não precisa saber os tokens hardcoded do `.env`**. Em vez disso:
    - Valida email+senha na tabela `techchallenge_user`
    - Resolve o papel (role) via `techchallenge_user.tipo_usuario_id` → `techchallenge_usertype`
    - Retorna `{ token, role, usuario }`
-4. O front usa o `token` recebido no header `Authorization: Bearer <token>` nas próximas chamadas a `/posts/*` e `/professores/*`
+4. O front usa o `token` recebido no header `Authorization: Bearer <token>` nas próximas chamadas a `/posts/*`, `/professores/*` e `/alunos/*`
 
 > ⚠️ **Nota**: nesta versão, o **token não é JWT**. É uma string estática, idêntica em todos os logins do mesmo papel, e salva em `techchallenge_usertype.token`. O middleware `authenticate` continua comparando os tokens com os valores do `.env` (que estão sincronizados com o banco pela inicialização automática). Em versões futuras pode ser substituído por JWT sem alterar a interface do `/login`.
 
@@ -157,8 +157,8 @@ Os tokens são configurados estaticamente no `.env` e automaticamente sincroniza
 
 | Variável | Papel (`role`) | Permissões |
 | -------- | ----- | ---------- |
-| `PROFESSOR_ACCESS_TOKEN` | `PROFESSOR` | Leitura e escrita (GET, POST, PUT, DELETE) |
-| `ALUNO_ACCESS_TOKEN` | `ALUNO` | Apenas leitura (GET `/posts`, GET `/posts/search`, GET `/posts/:id`) — sem acesso a `/professores/*` |
+| `PROFESSOR_ACCESS_TOKEN` | `PROFESSOR` | Leitura e escrita (GET, POST, PUT, DELETE) em posts, professores e alunos |
+| `ALUNO_ACCESS_TOKEN` | `ALUNO` | Apenas leitura (GET `/posts`, GET `/posts/search`, GET `/posts/:id`) — sem acesso a `/professores/*` e `/alunos/*` |
 
 ### Respostas de erro (autenticação / autorização)
 
@@ -166,7 +166,7 @@ Os tokens são configurados estaticamente no `.env` e automaticamente sincroniza
 | ------ | -------- |
 | `400` | Body inválido no `/login` (campos ausentes / vazios) — via Zod |
 | `401` | Credenciais inválidas no `/login` (email ou senha errados; ou inconsistência no role) **ou** token ausente/malformado/inválido nos endpoints de posts |
-| `403` | Token válido, mas sem permissão para a operação (ex.: aluno tentando criar/editar/deletar post ou professor) |
+| `403` | Token válido, mas sem permissão para a operação (ex.: aluno tentando criar/editar/deletar post, ou acessar qualquer rota de professores/alunos) |
 
 ---
 
@@ -237,6 +237,18 @@ Professores são os registros de `techchallenge_user` cujo `tipo_usuario_id` apo
 | `POST`   | `/professores`     | Cadastra um novo professor         | Professor          | `{ "nome": "string", "email": "string", "senha": "string (mín. 6)" }` — retorna `201`, `409` se o email já estiver em uso |
 | `PUT`    | `/professores/:id` | Atualiza um professor pelo id      | Professor          | `id` na URL; body `{ "nome": "string", "email": "string", "senha"?: "string" }` (sem `senha`, mantém a atual) — retorna `404` se não encontrado, `409` se o email for de outro usuário |
 | `DELETE` | `/professores/:id` | Remove um professor pelo id        | Professor          | `id` na URL — retorna `204`, `404` se não encontrado |
+
+### Alunos (requerem Bearer token retornado no `/login`)
+
+Mesmo modelo dos professores: alunos são os registros de `techchallenge_user` cujo `tipo_usuario_id` aponta para o tipo `ALUNO`. Essas rotas só enxergam alunos (um `id` de professor retorna `404`), a `senha` nunca é devolvida, e o aluno criado já consegue autenticar via `POST /login`. **Todas as rotas de alunos são exclusivas do papel `PROFESSOR`** — aluno recebe `403`.
+
+| Método   | Rota          | Descrição                     | Autenticação | Body / Query params |
+| -------- | ------------- | ----------------------------- | ------------ | ------------------- |
+| `GET`    | `/alunos`     | Lista alunos com paginação    | Professor    | `page` (padrão: 1), `limit` (padrão: 10, máx: 100) — retorna `{ alunos, page, limit, total }` |
+| `GET`    | `/alunos/:id` | Busca um aluno pelo id        | Professor    | `id` na URL — retorna `404` se não encontrado |
+| `POST`   | `/alunos`     | Cadastra um novo aluno        | Professor    | `{ "nome": "string", "email": "string", "senha": "string (mín. 6)" }` — retorna `201`, `409` se o email já estiver em uso |
+| `PUT`    | `/alunos/:id` | Atualiza um aluno pelo id     | Professor    | `id` na URL; body `{ "nome": "string", "email": "string", "senha"?: "string" }` (sem `senha`, mantém a atual) — retorna `404` se não encontrado, `409` se o email for de outro usuário |
+| `DELETE` | `/alunos/:id` | Remove um aluno pelo id       | Professor    | `id` na URL — retorna `204`, `404` se não encontrado |
 
 ### ⚡ Fluxo recomendado para o front-end (passo-a-passo)
 
@@ -444,6 +456,51 @@ Resposta (`200`):
       "nome": "Dr. Carlos Mendes",
       "email": "carlos.mendes@professor.fiap.br",
       "data_criacao": "2026-08-01T12:00:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 10,
+  "total": 1
+}
+```
+
+### Exemplo — cadastrar aluno
+
+```bash
+curl -X POST http://localhost:3000/alunos \
+  -H "Authorization: Bearer professor-dev-token-change-me" \
+  -H "Content-Type: application/json" \
+  -d '{"nome": "João Pedro Lima", "email": "joao.lima@aluno.fiap.br", "senha": "senha-joao-123"}'
+```
+
+Resposta (`201`):
+
+```json
+{
+  "id": 4,
+  "nome": "João Pedro Lima",
+  "email": "joao.lima@aluno.fiap.br",
+  "data_criacao": "2026-10-26T10:55:39.200Z"
+}
+```
+
+### Exemplo — listar alunos
+
+```bash
+curl "http://localhost:3000/alunos?page=1&limit=10" \
+  -H "Authorization: Bearer professor-dev-token-change-me"
+```
+
+Resposta (`200`):
+
+```json
+{
+  "alunos": [
+    {
+      "id": 2,
+      "nome": "Ana Beatriz Silva",
+      "email": "ana.beatriz@aluno.fiap.br",
+      "data_criacao": "2026-08-02T12:00:00.000Z"
     }
   ],
   "page": 1,
