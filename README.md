@@ -158,7 +158,7 @@ Os tokens são configurados estaticamente no `.env` e automaticamente sincroniza
 | Variável | Papel (`role`) | Permissões |
 | -------- | ----- | ---------- |
 | `PROFESSOR_ACCESS_TOKEN` | `PROFESSOR` | Leitura e escrita (GET, POST, PUT, DELETE) |
-| `ALUNO_ACCESS_TOKEN` | `ALUNO` | Apenas leitura (GET `/posts`, GET `/posts/search`, GET `/posts/:id`, GET `/professores`, GET `/professores/:id`) |
+| `ALUNO_ACCESS_TOKEN` | `ALUNO` | Apenas leitura (GET `/posts`, GET `/posts/search`, GET `/posts/:id`) — sem acesso a `/professores/*` |
 
 ### Respostas de erro (autenticação / autorização)
 
@@ -228,12 +228,12 @@ Usuários de mock do `schema_completo.sql`:
 
 ### Professores (requerem Bearer token retornado no `/login`)
 
-Professores são os registros de `techchallenge_user` cujo `tipo_usuario_id` aponta para o tipo `PROFESSOR` em `techchallenge_usertype`. Essas rotas só enxergam professores: um `id` de aluno retorna `404`. A `senha` nunca é devolvida nas respostas, e o professor criado já consegue autenticar via `POST /login`.
+Professores são os registros de `techchallenge_user` cujo `tipo_usuario_id` aponta para o tipo `PROFESSOR` em `techchallenge_usertype`. Essas rotas só enxergam professores: um `id` de aluno retorna `404`. A `senha` nunca é devolvida nas respostas, e o professor criado já consegue autenticar via `POST /login`. **Todas as rotas de professores são exclusivas do papel `PROFESSOR`** — aluno recebe `403`, inclusive na listagem.
 
 | Método   | Rota               | Descrição                          | Autenticação       | Body / Query params |
 | -------- | ------------------ | ---------------------------------- | ------------------ | ------------------- |
-| `GET`    | `/professores`     | Lista professores com paginação    | Professor ou Aluno | `page` (padrão: 1), `limit` (padrão: 10, máx: 100) — retorna `{ professores, page, limit, total }` |
-| `GET`    | `/professores/:id` | Busca um professor pelo id         | Professor ou Aluno | `id` na URL — retorna `404` se não encontrado |
+| `GET`    | `/professores`     | Lista professores com paginação    | Professor          | `page` (padrão: 1), `limit` (padrão: 10, máx: 100) — retorna `{ professores, page, limit, total }` |
+| `GET`    | `/professores/:id` | Busca um professor pelo id         | Professor          | `id` na URL — retorna `404` se não encontrado |
 | `POST`   | `/professores`     | Cadastra um novo professor         | Professor          | `{ "nome": "string", "email": "string", "senha": "string (mín. 6)" }` — retorna `201`, `409` se o email já estiver em uso |
 | `PUT`    | `/professores/:id` | Atualiza um professor pelo id      | Professor          | `id` na URL; body `{ "nome": "string", "email": "string", "senha"?: "string" }` (sem `senha`, mantém a atual) — retorna `404` se não encontrado, `409` se o email for de outro usuário |
 | `DELETE` | `/professores/:id` | Remove um professor pelo id        | Professor          | `id` na URL — retorna `204`, `404` se não encontrado |
@@ -431,7 +431,7 @@ Resposta (`201`):
 
 ```bash
 curl "http://localhost:3000/professores?page=1&limit=10" \
-  -H "Authorization: Bearer aluno-dev-token-change-me"
+  -H "Authorization: Bearer professor-dev-token-change-me"
 ```
 
 Resposta (`200`):

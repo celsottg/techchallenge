@@ -28,16 +28,12 @@ const professorParamsSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
-const readAccess = {
-  preHandler: [authenticate, authorize("PROFESSOR", "ALUNO")],
-};
-
-const writeAccess = {
+const professorAccess = {
   preHandler: [authenticate, authorize("PROFESSOR")],
 };
 
 export async function professorRoutes(app: FastifyInstance) {
-  app.get("/professores", readAccess, async (request, reply) => {
+  app.get("/professores", professorAccess, async (request, reply) => {
     const { page, limit } = listProfessorsQuerySchema.parse(request.query);
 
     const findProfessorsUseCase = makeFindProfessorsUseCase();
@@ -54,7 +50,7 @@ export async function professorRoutes(app: FastifyInstance) {
     });
   });
 
-  app.get("/professores/:id", readAccess, async (request, reply) => {
+  app.get("/professores/:id", professorAccess, async (request, reply) => {
     const { id } = professorParamsSchema.parse(request.params);
 
     const findProfessorByIdUseCase = makeFindProfessorByIdUseCase();
@@ -63,7 +59,7 @@ export async function professorRoutes(app: FastifyInstance) {
     return reply.status(200).send(professor);
   });
 
-  app.post("/professores", writeAccess, async (request, reply) => {
+  app.post("/professores", professorAccess, async (request, reply) => {
     const body = createProfessorBodySchema.parse(request.body);
 
     const createProfessorUseCase = makeCreateProfessorUseCase();
@@ -72,7 +68,7 @@ export async function professorRoutes(app: FastifyInstance) {
     return reply.status(201).send(professor);
   });
 
-  app.put("/professores/:id", writeAccess, async (request, reply) => {
+  app.put("/professores/:id", professorAccess, async (request, reply) => {
     const { id } = professorParamsSchema.parse(request.params);
     const body = updateProfessorBodySchema.parse(request.body);
 
@@ -82,7 +78,7 @@ export async function professorRoutes(app: FastifyInstance) {
     return reply.status(200).send(professor);
   });
 
-  app.delete("/professores/:id", writeAccess, async (request, reply) => {
+  app.delete("/professores/:id", professorAccess, async (request, reply) => {
     const { id } = professorParamsSchema.parse(request.params);
 
     const deleteProfessorUseCase = makeDeleteProfessorUseCase();
